@@ -80,7 +80,7 @@ export function AuthForm({ type }: AuthFormProps) {
         
         if (error) throw error;
         
-        setSuccess('Check your email for a confirmation link.');
+        setSuccess('Success! Please check your email for a confirmation link. The link will open in a new tab.');
       } else if (type === 'reset-password') {
         const { email } = values as ResetPasswordFormValues;
         const { error } = await resetPassword(email);

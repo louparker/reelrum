@@ -6,6 +6,8 @@ This document logs errors encountered during the development of the ReelRum plat
 
 1. [Supabase Client Utility TypeScript Errors](#1-supabase-client-utility-typescript-errors)
 2. [Invalid URL Error in Supabase Client](#2-invalid-url-error-in-supabase-client)
+3. [Next.js Image Configuration Error](#3-nextjs-image-configuration-error)
+4. [Authentication Email Link Issues](#4-authentication-email-link-issues)
 
 ---
 
@@ -172,3 +174,119 @@ try {
 ```
 
 These changes allow the application to run without real Supabase credentials during development, while providing clear warnings that authentication functionality won't work properly. For production, real Supabase credentials should be provided in the environment variables.
+
+---
+
+## 3. Next.js Image Configuration Error
+
+### Affected Component
+- Home page and any components using images from external domains
+
+### Error Description
+When using Next.js Image component with external image URLs, the following error occurred:
+
+```
+Error: Invalid src prop (https://images.unsplash.com/photo-1564078516393-cf04bd966897?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2340&q=80) on `next/image`, hostname "images.unsplash.com" is not configured under images in your `next.config.js`
+See more info: https://nextjs.org/docs/messages/next-image-unconfigured-host
+```
+
+The error occurred because Next.js requires explicit configuration for external image domains used with the `next/image` component for security and optimization purposes.
+
+### Documentation Reference
+According to the Next.js documentation (https://nextjs.org/docs/basic-features/image-optimization):
+
+```javascript
+module.exports = {
+  images: {
+    domains: ['example.com', 'example2.com'],
+  },
+}
+```
+
+External domains need to be explicitly allowed in the Next.js configuration file.
+
+### Implemented Solution
+Created a `next.config.js` file in the project root with the following configuration:
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    domains: ['images.unsplash.com'],
+  },
+};
+
+module.exports = nextConfig;
+```
+
+This configuration allows the Next.js Image component to load and optimize images from the Unsplash domain. If additional image domains are needed in the future, they should be added to the `domains` array.
+
+---
+
+## 4. Authentication Email Link Issues
+
+### Affected Component
+- Email confirmation links from Supabase authentication
+- `src/app/auth/callback/route.ts` - Authentication callback route
+
+### Error Description
+When clicking on the email confirmation link sent by Supabase during signup, two issues occurred:
+
+1. The link opened in the same tab instead of a new tab
+2. The link resulted in an error: `error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired`
+
+```
+http://localhost:3000/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired
+```
+
+### Documentation Reference
+According to Supabase documentation (https://supabase.com/docs/guides/auth/auth-email):
+
+1. Email links expire after a certain period (usually 24 hours)
+2. The site URL and redirect URLs need to be configured correctly in the Supabase project settings
+3. The callback route needs to handle various error cases
+
+### Implemented Solution
+
+1. **Updated the authentication callback route** to handle error cases and redirect to the login page with appropriate error messages:
+
+```typescript
+// Handle error cases
+if (error) {
+  console.error('Auth callback error:', error, error_description);
+  
+  // Redirect to login page with error message
+  return NextResponse.redirect(
+    new URL(`/auth/login?error=${encodeURIComponent(error_description || 'Authentication failed')}`, requestUrl.origin)
+  );
+}
+```
+
+2. **Updated the login page** to display error messages from URL parameters:
+
+```typescript
+const errorMessage = searchParams.error ? decodeURIComponent(searchParams.error) : '';
+
+// In the JSX:
+{errorMessage && (
+  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md" role="alert">
+    <p className="text-sm">{errorMessage}</p>
+  </div>
+)}
+```
+
+3. **Updated the signup form success message** to inform users that the link will open in a new tab:
+
+```typescript
+setSuccess('Success! Please check your email for a confirmation link. The link will open in a new tab.');
+```
+
+4. **For the Supabase project settings**, you need to:
+   - Go to the Supabase dashboard (https://app.supabase.com/)
+   - Select your project
+   - Go to Authentication > URL Configuration
+   - Set the Site URL to `http://localhost:3000`
+   - Add `http://localhost:3000/auth/callback` to the redirect URLs
+   - Enable "Open links in new tab" in the email template settings
+
+These changes improve the user experience by providing clear error messages and instructions, and properly handling authentication callback scenarios.
