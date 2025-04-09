@@ -5,6 +5,7 @@ This document logs errors encountered during the development of the ReelRum plat
 ## Table of Contents
 
 1. [Supabase Client Utility TypeScript Errors](#1-supabase-client-utility-typescript-errors)
+2. [Invalid URL Error in Supabase Client](#2-invalid-url-error-in-supabase-client)
 
 ---
 
@@ -102,3 +103,72 @@ This approach allows us to proceed with development while avoiding the TypeScrip
 3. Implementing a workaround for the Next.js App Router cookie handling
 
 **Note:** This is a temporary solution to unblock development. We should revisit this issue before deploying to production to ensure proper authentication persistence.
+
+---
+
+## 2. Invalid URL Error in Supabase Client
+
+### Affected Component
+- `src/lib/supabase-client.ts` - Client-side Supabase client
+- `src/lib/supabase-server.ts` - Server-side Supabase client
+- `src/lib/supabase.ts` - Supabase utility file
+- `src/context/auth-context.tsx` - Authentication context provider
+
+### Error Description
+When running the application without proper Supabase environment variables, the following error occurred:
+
+```
+TypeError: Invalid URL
+    at new SupabaseClient (http://127.0.0.1:59588/_next/static/chunks/node_modules_b94aef4c._.js:10267:41)
+    at createClient (http://127.0.0.1:59588/_next/static/chunks/node_modules_b94aef4c._.js:10460:12)
+    at createBrowserSupabaseClient (http://127.0.0.1:59588/_next/static/chunks/src_5fd439a2._.js:20:219)
+    at AuthProvider.useState (http://127.0.0.1:59588/_next/static/chunks/src_5fd439a2._.js:49:205)
+```
+
+The error occurred because we were trying to create a Supabase client with undefined or invalid URL values. The Supabase client constructor requires valid URL strings, but our environment variables were either not set or had placeholder values that weren't valid URLs.
+
+### Documentation Reference
+According to the Supabase documentation (https://supabase.com/docs/reference/javascript/initializing):
+
+```typescript
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient('https://your-project.supabase.co', 'your-anon-key')
+```
+
+The `createClient` function requires valid URL and API key strings. When these values are undefined or invalid, the Supabase client constructor throws a TypeError.
+
+### Implemented Solution
+We updated the Supabase client files to handle undefined or placeholder environment variables by providing fallback values and graceful error handling:
+
+1. Added fallback values for environment variables:
+```typescript
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-url.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
+```
+
+2. Added special handling for placeholder values:
+```typescript
+if (supabaseUrl === 'your_supabase_url' || supabaseKey === 'your_supabase_anon_key') {
+  console.warn('Using placeholder Supabase credentials. Authentication functionality will not work properly.');
+  return createClient<Database>(
+    'https://placeholder-url.supabase.co',
+    'placeholder-key'
+  );
+}
+```
+
+3. Updated the AuthProvider to handle authentication errors gracefully:
+```typescript
+try {
+  const { data: { session } } = await supabase.auth.getSession();
+  setSession(session);
+  setUser(session?.user ?? null);
+} catch (error) {
+  console.error('Error getting session:', error);
+} finally {
+  setIsLoading(false);
+}
+```
+
+These changes allow the application to run without real Supabase credentials during development, while providing clear warnings that authentication functionality won't work properly. For production, real Supabase credentials should be provided in the environment variables.
