@@ -1,0 +1,1 @@
+Please save the ReelRum logo image in this directory as 'logo.png' or 'logo.svg' depending on the format of the original image.
