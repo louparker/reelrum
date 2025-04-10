@@ -114,7 +114,7 @@ export default function Home() {
             <Button asChild size="lg" variant="default" className="bg-white text-zinc-900 hover:bg-zinc-100">
               <Link href="/auth/signup">Create an Account</Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+            <Button asChild size="lg" variant="outline" className="bg-white text-zinc-900 hover:bg-zinc-100">
               <Link href="/properties">Browse Properties</Link>
             </Button>
           </div>

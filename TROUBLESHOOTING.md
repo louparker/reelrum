@@ -8,6 +8,12 @@ This document logs errors encountered during the development of the ReelRum plat
 2. [Invalid URL Error in Supabase Client](#2-invalid-url-error-in-supabase-client)
 3. [Next.js Image Configuration Error](#3-nextjs-image-configuration-error)
 4. [Authentication Email Link Issues](#4-authentication-email-link-issues)
+5. [Login Redirection Issue](#5-login-redirection-issue)
+6. [Next.js App Router SearchParams Error](#6-nextjs-app-router-searchparams-error)
+7. [Authentication Issues](#7-authentication-issues)
+8. [Cookie Handling Error in Next.js Server Actions](#8-cookie-handling-error-in-nextjs-server-actions)
+9. [Hydration Error with Browser Extensions](#9-hydration-error-with-browser-extensions)
+10. [Authentication Migration from Supabase Direct to NextAuth.js](#10-authentication-migration-from-supabase-direct-to-nextauthjs)
 
 ---
 
@@ -290,3 +296,324 @@ setSuccess('Success! Please check your email for a confirmation link. The link w
    - Enable "Open links in new tab" in the email template settings
 
 These changes improve the user experience by providing clear error messages and instructions, and properly handling authentication callback scenarios.
+
+---
+
+## 5. Login Redirection Issue
+
+### Affected Component
+- `src/components/auth/auth-form.tsx` - Authentication form component
+- `src/context/auth-context.tsx` - Authentication context provider
+- `src/app/auth/login/page.tsx` - Login page
+- `src/lib/auth-server.ts` - Server-side authentication utilities
+
+### Error Description
+After successfully logging in with valid credentials, the user remains on the login page instead of being redirected to the dashboard page. There are no visible error messages, but the redirection to the dashboard doesn't occur as expected.
+
+### Possible Causes
+1. Client-side routing issues with Next.js App Router
+2. Authentication state not being properly updated after login
+3. Middleware or server component issues with session validation
+4. Race condition between authentication state update and redirection
+
+### Implemented Solution
+To fix this issue, we need to implement a more robust approach to authentication and redirection:
+
+1. **Create a specific auth middleware for route protection**:
+
+```typescript
+// src/middleware.ts
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
+  
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  // Auth routes should redirect to dashboard if user is already logged in
+  if (session && (
+    req.nextUrl.pathname.startsWith('/auth/login') ||
+    req.nextUrl.pathname.startsWith('/auth/signup') ||
+    req.nextUrl.pathname.startsWith('/auth/reset-password')
+  )) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+
+  // Protected routes should redirect to login if user is not logged in
+  if (!session && (
+    req.nextUrl.pathname.startsWith('/dashboard')
+  )) {
+    return NextResponse.redirect(new URL('/auth/login', req.url));
+  }
+
+  return res;
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/auth/:path*'],
+};
+```
+
+2. **Update the auth-context.tsx file** to handle session updates and redirections more reliably:
+
+```typescript
+const signIn = async (email: string, password: string) => {
+  try {
+    const response = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (response.error) {
+      throw response.error;
+    }
+
+    if (response.data.session) {
+      // Update local state
+      setSession(response.data.session);
+      setUser(response.data.user);
+      
+      // Force a hard navigation instead of client-side routing
+      window.location.href = '/dashboard';
+    }
+
+    return response;
+  } catch (error) {
+    console.error('Error signing in:', error);
+    return { error, data: { session: null, user: null } };
+  }
+};
+```
+
+3. **Update the auth-form.tsx component** to use a more direct approach for redirection:
+
+```typescript
+if (type === 'login') {
+  const { email, password } = values as LoginFormValues;
+  const { error, data } = await signIn(email, password);
+  
+  if (error) throw error;
+  
+  // The redirection is now handled in the signIn function
+  // No need to call router.push here
+}
+```
+
+These changes ensure that:
+1. Authentication state is properly checked at the middleware level
+2. Login redirections use hard navigation instead of client-side routing
+3. Protected routes are properly secured
+4. Auth routes redirect logged-in users away automatically
+
+---
+
+## 6. Next.js App Router SearchParams Error
+
+### Affected Component
+- `src/app/auth/login/page.tsx` - Login page
+- `src/app/auth/signup/page.tsx` - Signup page
+- `src/app/auth/reset-password/page.tsx` - Reset password page
+
+### Error Description
+When accessing authentication pages with URL parameters, the following error occurred:
+
+```
+Error: Route "/auth/login" used `searchParams.error`. `searchParams` should be awaited before using its properties. Learn more: https://nextjs.org/docs/messages/sync-dynamic-apis
+    at LoginPage (src/app/auth/login/page.tsx:24:36)
+  22 |   }
+  23 |
+> 24 |   const errorMessage = searchParams.error ? decodeURIComponent(searchParams.error) : '';
+     |                                    ^
+  25 |
+  26 |   return (
+  27 |     <div className="container flex items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+```
+
+The error occurred because in Next.js App Router, `searchParams` is considered a dynamic value that should be handled properly to account for its potentially undefined state.
+
+### Documentation Reference
+According to Next.js documentation (https://nextjs.org/docs/messages/sync-dynamic-apis):
+
+```
+You're trying to access a dynamic API synchronously, which can lead to unexpected behavior.
+Dynamic APIs like searchParams, params, and headers should be treated as potentially undefined.
+```
+
+### Implemented Solution
+Updated the authentication pages to properly handle searchParams as a dynamic value:
+
+1. **Define a proper type for the props**:
+```typescript
+type Props = {
+  searchParams: { [key: string]: string | string[] | undefined };
+};
+```
+
+2. **Safely extract and decode the error message**:
+```typescript
+// Safely extract and decode the error message
+const errorParam = searchParams.error;
+const errorMessage = errorParam 
+  ? (typeof errorParam === 'string' ? decodeURIComponent(errorParam) : '') 
+  : '';
+```
+
+3. **Use proper type checking** to handle cases where the parameter might be a string array or undefined.
+
+This approach ensures that the application handles URL parameters safely and avoids runtime errors when parameters are missing or have unexpected types.
+
+---
+
+## 7. Authentication Issues
+
+### Login Redirection Issue
+**Problem**: Users were not being redirected to the dashboard after successful login.
+
+**Root Cause**: After analyzing the Supabase documentation and our implementation, we identified several issues:
+1. We were not following the recommended authentication flow for Next.js App Router
+2. There were issues with cookie handling in the middleware
+3. The authentication flow was not properly integrated with Next.js routing
+
+**Solution**: Implemented the recommended Supabase authentication approach for Next.js App Router:
+1. Created proper server and client Supabase clients in `/lib/supabase-server.ts` and `/lib/supabase-client.ts`
+2. Updated the middleware to use the server Supabase client for session checking
+3. Implemented a shared AuthForm component that handles both login and signup
+4. Used window.location.href for hard navigation after successful login to ensure proper page reload
+5. Updated protected routes to use the getUser() helper function
+
+**Technical Details**:
+- Used the `@supabase/ssr` package for server-side rendering support
+- Implemented proper cookie handling in the Supabase clients
+- Created a unified authentication form component
+- Used direct window location changes for redirection after login to ensure proper session handling
+
+**References**:
+- [Supabase Auth Helpers for Next.js](https://supabase.com/docs/guides/auth/auth-helpers/nextjs)
+- [Next.js App Router Authentication](https://nextjs.org/docs/app/building-your-application/authentication)
+
+## 8. Cookie Handling Error in Next.js Server Actions
+
+### Problem
+When implementing authentication with Supabase in Next.js App Router, we encountered issues with cookie handling that prevented proper session management.
+
+### Root Cause
+The Next.js cookies API requires special handling in server components and middleware. Additionally, there were compatibility issues between the Supabase client and Next.js App Router's server components.
+
+### Solution
+1. Implemented proper cookie handling in the Supabase server client
+2. Used the recommended approach from Supabase documentation for Next.js App Router
+3. Created separate server and client Supabase clients with appropriate configurations
+
+### Technical Details
+- Used the `createServerClient` function from `@supabase/ssr` for server-side rendering
+- Implemented proper cookie handling for both getting and setting cookies
+- Created helper functions for authentication operations
+
+### References
+- [Supabase Auth Helpers for Next.js](https://supabase.com/docs/guides/auth/auth-helpers/nextjs)
+- [Next.js Cookies API](https://nextjs.org/docs/app/api-reference/functions/cookies)
+
+## 9. Hydration Error with Browser Extensions
+
+### Problem
+After signing out or navigating between pages, the following hydration error appears in the console:
+
+```
+Error: A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+```
+
+The specific error shows a mismatch with the attribute `cz-shortcut-listen="true"` on the body element.
+
+### Root Cause
+This error is caused by browser extensions (like ColorZilla or other tools that add keyboard shortcuts) that modify the DOM before React hydration occurs:
+
+1. The server renders HTML without the `cz-shortcut-listen` attribute
+2. Before React hydrates, a browser extension adds this attribute to the body
+3. When React tries to hydrate, it sees a mismatch between what it expected and what's in the DOM
+
+### Solution
+This error is harmless and doesn't affect application functionality. It's caused by browser extensions rather than application code. There are a few approaches to handle it:
+
+1. **Ignore it** (recommended): Since it's caused by browser extensions and doesn't affect functionality, you can safely ignore this warning.
+
+2. **Suppress the warning in development** (optional): If you want to hide these warnings during development, you could add this to your code:
+
+```javascript
+// Only in development and only if you really want to hide these warnings
+if (process.env.NODE_ENV !== 'production') {
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    if (args[0]?.includes('Hydration')) return;
+    originalConsoleError(...args);
+  };
+}
+```
+
+3. **Disable browser extensions**: For testing critical functionality, temporarily disable browser extensions.
+
+### References
+- [React Hydration Errors](https://react.dev/reference/react-dom/hydrate#handling-different-client-and-server-content)
+- [Next.js Hydration Mismatch](https://nextjs.org/docs/messages/react-hydration-error)
+
+## 10. Authentication Migration from Supabase Direct to NextAuth.js
+
+### Problem
+The initial implementation used Supabase's direct authentication methods, which led to issues with session management, cookie handling, and user redirection after login and signup.
+
+### Root Cause
+Supabase's direct authentication approach in Next.js App Router required complex cookie handling and manual session management, which created several challenges:
+
+1. Cookie synchronization issues between client and server
+2. Hydration errors due to session state mismatches
+3. Complex redirection logic after authentication events
+4. Difficulties with proper session persistence across page reloads
+
+### Solution
+We migrated the authentication implementation to use NextAuth.js with Supabase as the authentication provider:
+
+1. **Removed previous authentication implementation**:
+   - Removed direct Supabase authentication files (`src/lib/supabase/server.ts`, `src/lib/auth/client.ts`, `src/lib/supabase/client.ts`)
+   - Removed custom auth callback and logout routes that were specific to Supabase direct authentication
+
+2. **Implemented NextAuth.js with Supabase adapter**:
+   - Created NextAuth.js API route with Supabase adapter
+   - Set up proper session management with JWT strategy
+   - Implemented credentials provider for email/password authentication
+   - Created custom API endpoints for signup and password reset
+
+3. **Updated authentication provider and components**:
+   - Updated the auth provider to use NextAuth.js hooks and methods
+   - Modified auth forms to work with the new authentication flow
+   - Updated protected routes to use NextAuth.js session verification
+
+### Technical Details
+- Used NextAuth.js for session management and authentication flow
+- Implemented the Supabase adapter for NextAuth.js
+- Created custom API endpoints for Supabase-specific operations
+- Updated middleware to use NextAuth.js for route protection
+- Set up proper environment variables for NextAuth.js configuration
+
+### Benefits
+- More robust session management with JWT-based authentication
+- Simplified authentication flow with built-in session handling
+- Better security with NextAuth.js's proven authentication patterns
+- Easier maintenance with a standardized authentication library
+- Improved user experience with more reliable authentication state
+
+### References
+- [NextAuth.js Documentation](https://next-auth.js.org/getting-started/introduction)
+- [NextAuth.js with Supabase Adapter](https://authjs.dev/reference/adapter/supabase)
+- [Next.js App Router Authentication](https://nextjs.org/docs/app/building-your-application/authentication)

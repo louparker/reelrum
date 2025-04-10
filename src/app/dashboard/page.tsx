@@ -1,15 +1,21 @@
-import { requireAuth } from '@/lib/auth-server';
+import { getCurrentUser } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 export const metadata = {
   title: 'Dashboard | ReelRum',
-  description: 'Your ReelRum dashboard',
+  description: 'Your ReelRum Dashboard',
 };
 
 export default async function DashboardPage() {
-  const session = await requireAuth();
-  const user = session.user;
+  // Get the authenticated user
+  const user = await getCurrentUser();
+  
+  // Redirect to login if not authenticated
+  if (!user) {
+    redirect('/auth/login');
+  }
 
   return (
     <div className="container mx-auto py-10 px-4">
@@ -28,8 +34,8 @@ export default async function DashboardPage() {
           <Button asChild>
             <Link href="/">Go to Home</Link>
           </Button>
-          <Button variant="outline">
-            <Link href="/auth/logout">Sign Out</Link>
+          <Button variant="outline" asChild>
+            <Link href="/api/auth/signout">Sign Out</Link>
           </Button>
         </div>
       </div>

@@ -1,105 +1,141 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { createBrowserSupabaseClient } from '@/lib/supabase-client';
 import { Session, User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
+import { 
+  signIn as clientSignIn, 
+  signUp as clientSignUp, 
+  signOut as clientSignOut, 
+  resetPassword as clientResetPassword,
+  getClientSession,
+  onAuthStateChange
+} from '@/lib/auth-client';
 
-type AuthContextType = {
+interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
-  signUp: (email: string, password: string) => Promise<{
-    error: Error | null;
-    data: { user: User | null; session: Session | null } | null;
-  }>;
-  signIn: (email: string, password: string) => Promise<{
-    error: Error | null;
-    data: { user: User | null; session: Session | null } | null;
-  }>;
+  signUp: (email: string, password: string) => Promise<any>;
+  signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{
-    error: Error | null;
-    data: {} | null;
-  }>;
-};
+  resetPassword: (email: string) => Promise<any>;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [supabase] = useState(() => createBrowserSupabaseClient());
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const getSession = async () => {
+    // Skip initialization on the server
+    if (typeof window === 'undefined') {
+      setIsLoading(false);
+      return;
+    }
+
+    const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setUser(session?.user ?? null);
+        console.log('Initializing auth...');
+        setIsLoading(true);
+        
+        // Get initial session
+        const initialSession = await getClientSession();
+        console.log('Initial session result:', initialSession ? 'Session exists' : 'No session');
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        
+        // Set up auth state change listener
+        const subscription = onAuthStateChange((newSession) => {
+          console.log('Auth state changed:', newSession ? 'Session exists' : 'No session');
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+          router.refresh();
+        });
+        
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error) {
-        console.error('Error getting session:', error);
+        console.error('Error initializing auth:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    getSession();
-
-    try {
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-        router.refresh();
-      });
-
-      return () => {
-        subscription.unsubscribe();
-      };
-    } catch (error) {
-      console.error('Error setting up auth state change listener:', error);
-      setIsLoading(false);
-      return () => {};
-    }
-  }, [supabase, router]);
+    initializeAuth();
+  }, [router]);
 
   const signUp = async (email: string, password: string) => {
-    const response = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    return response;
+    try {
+      console.log('Signing up with email:', email);
+      const response = await clientSignUp(email, password);
+      console.log('Signup response:', response);
+      return response;
+    } catch (error) {
+      console.error('Error signing up:', error);
+      throw error;
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const response = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      console.log('Signing in with email:', email);
+      const response = await clientSignIn(email, password);
+      console.log('Sign in response:', response);
 
-    return response;
+      if (response.error) {
+        return response;
+      }
+
+      if (response.data.session) {
+        // Update local state
+        setSession(response.data.session);
+        setUser(response.data.user);
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error signing in:', error);
+      return { error, data: { session: null, user: null } };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
+    try {
+      console.log('Signing out...');
+      await clientSignOut();
+      setSession(null);
+      setUser(null);
+      console.log('Signed out successfully');
+      router.push('/');
+      router.refresh();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const resetPassword = async (email: string) => {
-    const response = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
-    });
-
-    return response;
+    try {
+      console.log('Resetting password for email:', email);
+      const response = await clientResetPassword(email);
+      console.log('Reset password response:', response);
+      return response;
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      throw error;
+    }
   };
 
   const value = {
@@ -113,12 +149,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }
