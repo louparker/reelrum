@@ -2,8 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+  const isAuthenticated = !!session?.user;
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Navigation */}
@@ -17,12 +22,25 @@ export default function Home() {
             <Link href="/how-it-works" className="text-sm font-medium hover:text-zinc-600">
               How It Works
             </Link>
-            <Button asChild variant="outline" className="mr-2">
-              <Link href="/auth/login">Sign In</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/auth/signup">Sign Up</Link>
-            </Button>
+            {isAuthenticated ? (
+              <>
+                <Button asChild variant="outline" className="mr-2">
+                  <Link href="/dashboard">Dashboard</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/properties/list">List Property</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild variant="outline" className="mr-2">
+                  <Link href="/auth/login">Sign In</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/auth/signup">Sign Up</Link>
+                </Button>
+              </>
+            )}
           </nav>
         </div>
       </header>
@@ -42,7 +60,9 @@ export default function Home() {
                 <Link href="/properties">Browse Locations</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="px-8">
-                <Link href="/auth/signup?provider=true">List Your Property</Link>
+                <Link href={isAuthenticated ? "/properties/list" : "/auth/signup?provider=true"}>
+                  List Your Property
+                </Link>
               </Button>
             </div>
           </div>
@@ -80,18 +100,18 @@ export default function Home() {
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Book with Ease</h3>
+              <h3 className="text-xl font-semibold mb-2">Simple Booking</h3>
               <p className="text-zinc-600">
-                Seamless booking process with secure payments and instant confirmation for your peace of mind.
+                Book locations by the hour or day with transparent pricing and no hidden fees.
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 01-.75.75h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <h3 className="text-xl font-semibold mb-2">Earn Extra Income</h3>
@@ -111,9 +131,15 @@ export default function Home() {
             Join thousands of property owners and filmmakers already using ReelRum to connect and create amazing content.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" variant="default" className="bg-white text-zinc-900 hover:bg-zinc-100">
-              <Link href="/auth/signup">Create an Account</Link>
-            </Button>
+            {isAuthenticated ? (
+              <Button asChild size="lg" variant="default" className="bg-white text-zinc-900 hover:bg-zinc-100">
+                <Link href="/properties/list">List Your Property</Link>
+              </Button>
+            ) : (
+              <Button asChild size="lg" variant="default" className="bg-white text-zinc-900 hover:bg-zinc-100">
+                <Link href="/auth/signup">Create an Account</Link>
+              </Button>
+            )}
             <Button asChild size="lg" variant="outline" className="bg-white text-zinc-900 hover:bg-zinc-100">
               <Link href="/properties">Browse Properties</Link>
             </Button>
@@ -134,7 +160,7 @@ export default function Home() {
             <div>
               <h3 className="font-semibold mb-4">For Property Owners</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link href="#" className="text-zinc-600 hover:text-zinc-900">List Your Property</Link></li>
+                <li><Link href={isAuthenticated ? "/properties/list" : "/auth/signup?provider=true"} className="text-zinc-600 hover:text-zinc-900">List Your Property</Link></li>
                 <li><Link href="#" className="text-zinc-600 hover:text-zinc-900">How It Works</Link></li>
                 <li><Link href="#" className="text-zinc-600 hover:text-zinc-900">Pricing</Link></li>
                 <li><Link href="#" className="text-zinc-600 hover:text-zinc-900">FAQ</Link></li>

@@ -10,24 +10,24 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+          "bg-zinc-900 text-white shadow-xs hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200",
         destructive:
-          "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-red-600 text-white shadow-xs hover:bg-red-700 focus-visible:ring-red-300/20 dark:focus-visible:ring-red-300/40",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+          "border border-zinc-300 bg-white text-zinc-900 shadow-xs hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+          "bg-zinc-200 text-zinc-900 shadow-xs hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline",
+          "text-zinc-900 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800",
+        link: "text-blue-600 underline-offset-4 hover:underline dark:text-blue-400",
         rum: 
-          "bg-rum-500 text-white shadow-xs hover:bg-rum-600 focus-visible:ring-rum-300/50",
+          "bg-amber-600 text-white shadow-xs hover:bg-amber-700 focus-visible:ring-amber-300/50",
         teal:
-          "bg-teal-500 text-white shadow-xs hover:bg-teal-600 focus-visible:ring-teal-300/50",
+          "bg-teal-600 text-white shadow-xs hover:bg-teal-700 focus-visible:ring-teal-300/50",
         "rum-outline":
-          "border border-rum-500 bg-transparent text-rum-500 shadow-xs hover:bg-rum-500/10",
+          "border border-amber-600 bg-white text-amber-600 shadow-xs hover:bg-amber-50 dark:bg-zinc-900 dark:hover:bg-zinc-800",
         "teal-outline":
-          "border border-teal-500 bg-transparent text-teal-500 shadow-xs hover:bg-teal-500/10",
+          "border border-teal-600 bg-white text-teal-600 shadow-xs hover:bg-teal-50 dark:bg-zinc-900 dark:hover:bg-zinc-800",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

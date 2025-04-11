@@ -36,6 +36,12 @@ export async function middleware(req: NextRequest) {
     
     // Redirect from auth routes to dashboard if user is logged in
     if (token && isAuthRoute) {
+      // If the user is trying to sign up as a provider, redirect to the property listing form
+      if (req.nextUrl.searchParams.get('provider') === 'true') {
+        console.log('Redirecting authenticated user from auth route to property listing');
+        return NextResponse.redirect(new URL('/properties/list', req.url));
+      }
+      
       console.log('Redirecting authenticated user from auth route to dashboard');
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
