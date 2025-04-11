@@ -33,7 +33,7 @@ export function PropertyFormProvider({
 }: PropertyFormProviderProps) {
   const [step, setStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const totalSteps = 7 // Updated total number of steps in the form
+  const totalSteps = 8 // Updated total number of steps in the form
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -71,6 +71,8 @@ export function PropertyFormProvider({
       no_smoking: false,
       no_pets: false,
       no_parties: false,
+      availability: [],
+      defaultAvailability: true,
       ...defaultValues,
     },
   })

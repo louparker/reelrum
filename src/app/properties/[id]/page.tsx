@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   MapPin, 
   Calendar, 
-  DollarSign, 
   Clock, 
   Home, 
   Ruler, 
@@ -60,9 +59,9 @@ export default async function PropertyPage({ params }: { params: { id: string } 
   
   // Format price with currency
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('sv-SE', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'SEK',
     }).format(price)
   }
   

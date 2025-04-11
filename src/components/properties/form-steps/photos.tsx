@@ -8,7 +8,6 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, Upload, X, Star, StarIcon, GripVertical, ImageIcon } from "lucide-react"
 import { supabase } from "@/lib/supabase-client"
-import Image from "next/image"
 import { useSession } from "next-auth/react"
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
@@ -18,12 +17,13 @@ import { v4 as uuidv4 } from 'uuid'
 
 // Define the type for our image objects
 type ImageFile = {
+  id: string
   path: string
   url: string
   name: string
   size: number
   type: string
-  id: string
+  dataUrl?: string // Add dataUrl field for local preview
 }
 
 // Maximum file size in bytes (5MB)
@@ -52,6 +52,12 @@ function SortableImage({ image, index, onRemove, onSetCover, isCover }: {
     transition,
   }
 
+  // Use the data URL for preview if available, otherwise fall back to the remote URL
+  const imageSource = image.dataUrl || image.url
+
+  // For debugging
+  console.log('Image source used:', imageSource)
+
   return (
     <div 
       ref={setNodeRef} 
@@ -59,13 +65,19 @@ function SortableImage({ image, index, onRemove, onSetCover, isCover }: {
       className="relative group bg-white border rounded-md overflow-hidden"
     >
       <div className="relative aspect-square w-full overflow-hidden">
-        <Image
-          src={image.url}
-          alt={image.name}
-          fill
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-        />
+        {/* Always show placeholder as background */}
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+          <ImageIcon className="h-10 w-10 text-gray-300" />
+        </div>
+        
+        {/* Use data URL directly for preview */}
+        {image.dataUrl && (
+          <div 
+            className="absolute inset-0 bg-center bg-cover bg-no-repeat"
+            style={{ backgroundImage: `url(${image.dataUrl})` }}
+          />
+        )}
+        
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200"></div>
       </div>
       
@@ -135,7 +147,17 @@ export function PhotosStep() {
   
   // Handle file selection
   const handleFiles = useCallback(async (files: FileList | null) => {
-    if (!files || !session?.user?.id) return
+    if (!files) return
+    
+    // Check if user is authenticated
+    if (!session?.user?.id) {
+      console.error('User not authenticated')
+      alert('You must be logged in to upload files. Please sign in and try again.')
+      return
+    }
+    
+    console.log('Session user:', session.user)
+    console.log('Starting file upload process...')
     
     setIsUploading(true)
     setUploadProgress(0)
@@ -147,6 +169,8 @@ export function PhotosStep() {
       // Process each file
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
+        
+        console.log(`Processing file ${i+1}/${files.length}:`, file.name)
         
         // Validate file type
         if (!ALLOWED_FILE_TYPES.includes(file.type)) {
@@ -160,38 +184,86 @@ export function PhotosStep() {
           continue
         }
         
-        // Create a unique file path
+        // Create a data URL for local preview
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.readAsDataURL(file)
+        })
+        
+        // Create a unique file path with user ID for security
         const fileExt = file.name.split('.').pop()
         const fileName = `${uuidv4()}.${fileExt}`
-        const filePath = `properties/${userId}/${fileName}`
+        const filePath = `user_${userId}/${fileName}` // Include user ID in path for security
         
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from('property-images')
-          .upload(filePath, file)
+        console.log('Uploading to path:', filePath)
+        console.log('Bucket:', 'bucket1')
         
-        if (error) {
-          console.error('Error uploading file:', error)
+        // Try to upload the file
+        try {
+          // Upload to Supabase Storage
+          const { data, error } = await supabase.storage
+            .from('bucket1')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            })
+          
+          if (error) {
+            console.error('Error uploading file:', error)
+            console.error('Error details:', JSON.stringify(error, null, 2))
+            
+            // Check for specific error types
+            if (error.message && error.message.includes('bucket') || error.statusCode === 404) {
+              alert('Storage bucket not configured. Please contact an administrator.')
+            } else if (error.statusCode === 403) {
+              alert('Permission denied. Please check that the storage bucket policy is set to allow uploads.')
+            } else {
+              alert(`Error uploading file: ${error.message || 'Unknown error'}`)
+            }
+            
+            throw error
+          }
+          
+          console.log('Upload successful:', data)
+          
+          // Get the public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('bucket1')
+            .getPublicUrl(filePath)
+          
+          console.log('Public URL from Supabase:', publicUrl)
+          
+          // Ensure the URL is in the correct format
+          const processedUrl = publicUrl.startsWith('http') 
+            ? publicUrl 
+            : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/bucket1/${filePath}`
+          
+          console.log('Processed URL:', processedUrl)
+          
+          // Add to our images array
+          newImages.push({
+            path: filePath,
+            url: processedUrl,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            dataUrl, // Include the data URL for local preview
+            id: uuidv4() // Generate a unique ID for drag and drop
+          })
+        } catch (uploadError) {
+          console.error('Upload failed:', uploadError)
+          // Continue to the next file if one fails
           continue
         }
         
-        // Get the public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('property-images')
-          .getPublicUrl(filePath)
-        
-        // Add to our images array
-        newImages.push({
-          path: filePath,
-          url: publicUrl,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          id: uuidv4() // Generate a unique ID for drag and drop
-        })
-        
         // Update progress
         setUploadProgress(Math.round(((i + 1) / files.length) * 100))
+      }
+      
+      if (newImages.length === 0) {
+        alert('No files were uploaded successfully. Please check the storage bucket configuration.')
+        return
       }
       
       // Update the form with the new images
@@ -242,38 +314,54 @@ export function PhotosStep() {
   }
   
   // Handle removing an image
-  const handleRemoveImage = async (id: string) => {
+  const handleRemoveImage = useCallback(async (id: string) => {
     const imageIndex = images.findIndex(img => img.id === id)
     if (imageIndex === -1) return
     
     const image = images[imageIndex]
     
     try {
+      // Check if user is authenticated
+      if (!session?.user?.id) {
+        console.error('User not authenticated')
+        return
+      }
+      
+      console.log('Deleting image from storage:', image.path)
+      
       // Delete from Supabase Storage
       const { error } = await supabase.storage
-        .from('property-images')
+        .from('bucket1')
         .remove([image.path])
       
       if (error) {
         console.error('Error deleting file:', error)
+        console.error('Error details:', JSON.stringify(error, null, 2))
+        alert(`Error deleting file: ${error.message}`)
         return
       }
       
-      // Remove from our images array
+      console.log('Image successfully deleted from storage')
+      
+      // Remove from form state
       const newImages = [...images]
       newImages.splice(imageIndex, 1)
       setValue('images', newImages)
       
-      // Update cover image index if needed
-      if (coverImageIndex === imageIndex) {
-        setValue('cover_image_index', newImages.length > 0 ? 0 : undefined)
-      } else if (coverImageIndex !== undefined && coverImageIndex > imageIndex) {
-        setValue('cover_image_index', coverImageIndex - 1)
+      // Update cover image if needed
+      if (coverImageIndex !== undefined) {
+        if (newImages.length === 0) {
+          setValue('cover_image_index', undefined)
+        } else if (coverImageIndex === imageIndex) {
+          setValue('cover_image_index', 0)
+        } else if (coverImageIndex > imageIndex) {
+          setValue('cover_image_index', coverImageIndex - 1)
+        }
       }
     } catch (error) {
       console.error('Error removing image:', error)
     }
-  }
+  }, [images, setValue, coverImageIndex, session])
   
   // Handle setting an image as the cover
   const handleSetCover = (index: number) => {

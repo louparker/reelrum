@@ -10,6 +10,7 @@ import { AmenitiesStep } from "./form-steps/amenities"
 import { PhotosStep } from "./form-steps/photos"
 import { PricingStep } from "./form-steps/pricing"
 import { RulesStep } from "./form-steps/rules"
+import { AvailabilityStep } from "./form-steps/availability"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -72,6 +73,9 @@ function PropertyFormContent() {
       case 6: // Rules
         fieldsToValidate = ["cancellation_policy"]
         break
+      case 7: // Availability
+        // No required fields in this step
+        break
       default:
         break
     }
@@ -103,6 +107,8 @@ function PropertyFormContent() {
         return <PricingStep />
       case 6:
         return <RulesStep />
+      case 7:
+        return <AvailabilityStep />
       default:
         return <BasicDetailsStep />
     }

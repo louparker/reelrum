@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { PropertyForm } from "@/components/properties/property-form"
 import { PropertyFormValues } from "@/lib/schemas/property-schema"
-import { createProperty } from "@/app/properties/actions"
 import { useToast } from "@/components/ui/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
@@ -23,9 +22,24 @@ export default function ListPropertyPage() {
 
   const handleSubmit = async (data: PropertyFormValues) => {
     try {
-      const result = await createProperty(data)
+      setSubmissionState({
+        status: "idle",
+      })
+      
+      // Call the server action with proper error handling
+      const formData = new FormData()
+      // Convert the complex data structure to JSON and add it to the FormData
+      formData.append('propertyData', JSON.stringify(data))
+      
+      // Use fetch API to call the server action endpoint
+      const response = await fetch('/api/properties/create', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      const result = await response.json()
 
-      if (!result.success) {
+      if (!response.ok || !result.success) {
         setSubmissionState({
           status: "error",
           message: result.error || "Failed to create property listing",

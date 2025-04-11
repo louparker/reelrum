@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { propertyAvailabilitySchema } from "./availability-schema";
 
 // Property types
 export const propertyTypes = [
@@ -134,6 +135,7 @@ export const propertySchema = z.object({
   ...propertyPhotosSchema.shape,
   ...propertyPricingSchema.shape,
   ...propertyRulesSchema.shape,
+  ...propertyAvailabilitySchema.shape,
 });
 
 export type PropertyFormValues = z.infer<typeof propertySchema>;
@@ -144,3 +146,4 @@ export type PropertyAmenitiesValues = z.infer<typeof propertyAmenitiesSchema>;
 export type PropertyPhotosValues = z.infer<typeof propertyPhotosSchema>;
 export type PropertyPricingValues = z.infer<typeof propertyPricingSchema>;
 export type PropertyRulesValues = z.infer<typeof propertyRulesSchema>;
+export type PropertyAvailabilityValues = z.infer<typeof propertyAvailabilitySchema>;
