@@ -11,40 +11,6 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Navigation */}
-      <header className="border-b">
-        <div className="container mx-auto flex items-center justify-between py-4">
-          <Logo size="sm" />
-          <nav className="flex items-center gap-6">
-            <Link href="/properties" className="text-sm font-medium hover:text-zinc-600">
-              Browse Properties
-            </Link>
-            <Link href="/how-it-works" className="text-sm font-medium hover:text-zinc-600">
-              How It Works
-            </Link>
-            {isAuthenticated ? (
-              <>
-                <Button asChild variant="outline" className="mr-2">
-                  <Link href="/dashboard">Dashboard</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/properties/list">List Property</Link>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button asChild variant="outline" className="mr-2">
-                  <Link href="/auth/login">Sign In</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/auth/signup">Sign Up</Link>
-                </Button>
-              </>
-            )}
-          </nav>
-        </div>
-      </header>
-
       {/* Hero Section */}
       <section className="relative py-20 bg-zinc-50">
         <div className="container mx-auto px-4 flex flex-col lg:flex-row items-center">
