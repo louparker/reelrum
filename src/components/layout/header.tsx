@@ -86,7 +86,9 @@ export default function Header() {
                 <Link href="/properties/list">List Property</Link>
               </Button>
               
-              <ThemeToggle />
+              <div className="flex items-center">
+                <ThemeToggle />
+              </div>
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -114,7 +116,7 @@ export default function Header() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/properties/my-properties" className="cursor-pointer">
+                    <Link href="/dashboard/properties" className="cursor-pointer">
                       <Building className="h-4 w-4 mr-2" />
                       My Properties
                     </Link>
@@ -129,6 +131,9 @@ export default function Header() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
+              <div className="mr-2">
+                <ThemeToggle />
+              </div>
               <Button asChild variant="outline" className="mr-2">
                 <Link href="/auth/login">Sign In</Link>
               </Button>
@@ -141,7 +146,9 @@ export default function Header() {
           
         {/* Mobile Navigation Button */}
         <div className="md:hidden flex items-center gap-2">
-          <ThemeToggle />
+          <div className="mr-2">
+            <ThemeToggle />
+          </div>
           
           {!isLoading && user ? (
             <Button asChild size="sm" variant="outline" className="px-3 py-1 h-8">
@@ -168,7 +175,7 @@ export default function Header() {
       {isMenuOpen && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setIsMenuOpen(false)}>
           <div 
-            className="fixed inset-y-0 right-0 w-64 bg-white shadow-xl p-4 overflow-y-auto"
+            className="fixed inset-y-0 right-0 w-64 bg-white dark:bg-gray-900 shadow-xl p-4 overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
@@ -176,7 +183,7 @@ export default function Header() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="text-zinc-700"
+                className="text-zinc-700 dark:text-zinc-300"
                 onClick={() => setIsMenuOpen(false)}
               >
                 <X className="h-5 w-5" />
@@ -186,7 +193,7 @@ export default function Header() {
             <nav className="flex flex-col space-y-4">
               <Link 
                 href="/" 
-                className="flex items-center p-2 rounded-md hover:bg-zinc-100"
+                className="flex items-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 onClick={() => setIsMenuOpen(false)}
               >
                 <Home className="h-5 w-5 mr-3" />
@@ -194,7 +201,7 @@ export default function Header() {
               </Link>
               <Link 
                 href="/properties" 
-                className="flex items-center p-2 rounded-md hover:bg-zinc-100"
+                className="flex items-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 onClick={() => setIsMenuOpen(false)}
               >
                 <Building className="h-5 w-5 mr-3" />
@@ -202,7 +209,7 @@ export default function Header() {
               </Link>
               <Link 
                 href="/search" 
-                className="flex items-center p-2 rounded-md hover:bg-zinc-100"
+                className="flex items-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 onClick={() => setIsMenuOpen(false)}
               >
                 <Search className="h-5 w-5 mr-3" />
@@ -210,7 +217,7 @@ export default function Header() {
               </Link>
               <Link 
                 href="/how-it-works" 
-                className="flex items-center p-2 rounded-md hover:bg-zinc-100"
+                className="flex items-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 onClick={() => setIsMenuOpen(false)}
               >
                 <HelpCircle className="h-5 w-5 mr-3" />
@@ -218,7 +225,7 @@ export default function Header() {
               </Link>
               <Link 
                 href="/dashboard" 
-                className="flex items-center p-2 rounded-md hover:bg-zinc-100"
+                className="flex items-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 onClick={() => setIsMenuOpen(false)}
               >
                 <LayoutDashboard className="h-5 w-5 mr-3" />
@@ -226,28 +233,21 @@ export default function Header() {
               </Link>
 
               <div className="border-t pt-4 mt-2">
-                <div className="flex items-center p-2 mb-4">
-                  <span className="font-medium">Theme</span>
-                  <div className="ml-auto">
-                    <ThemeToggle />
-                  </div>
-                </div>
-                
                 {!isLoading && user ? (
                   <>
-                    <div className="flex items-center p-2 mb-4">
+                    <div className="flex items-center mb-4">
                       <Avatar className="h-8 w-8 mr-3">
                         <AvatarImage src={user.image || ''} alt={user.name || 'User'} />
                         <AvatarFallback>{getUserInitials()}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{user.name || 'User'}</p>
-                        <p className="text-xs text-zinc-500">{user.email}</p>
+                        <div className="font-medium">{user.name || 'User'}</div>
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400">{user.email}</div>
                       </div>
                     </div>
                     <Link 
                       href="/properties/list" 
-                      className="flex items-center p-2 rounded-md hover:bg-zinc-100"
+                      className="flex items-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <Building className="h-5 w-5 mr-3" />
@@ -255,7 +255,7 @@ export default function Header() {
                     </Link>
                     <Link 
                       href="/profile" 
-                      className="flex items-center p-2 rounded-md hover:bg-zinc-100"
+                      className="flex items-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <User className="h-5 w-5 mr-3" />
@@ -266,7 +266,7 @@ export default function Header() {
                         signOut();
                         setIsMenuOpen(false);
                       }}
-                      className="flex items-center p-2 rounded-md hover:bg-zinc-100 w-full text-left"
+                      className="flex items-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 w-full text-left"
                     >
                       <LogOut className="h-5 w-5 mr-3" />
                       Sign Out
@@ -276,7 +276,7 @@ export default function Header() {
                   <>
                     <Link 
                       href="/auth/login" 
-                      className="flex items-center p-2 rounded-md hover:bg-zinc-100"
+                      className="flex items-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <LogIn className="h-5 w-5 mr-3" />
@@ -284,7 +284,7 @@ export default function Header() {
                     </Link>
                     <Link 
                       href="/auth/signup" 
-                      className="flex items-center p-2 rounded-md bg-amber-500 text-white mt-2"
+                      className="flex items-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <User className="h-5 w-5 mr-3" />
